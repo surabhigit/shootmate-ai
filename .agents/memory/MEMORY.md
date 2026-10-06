@@ -1,0 +1,1 @@
+- [CodeExecution file transfer](codeexecution-file-transfer.md) — avoid bulk text through shell output; use bounded file reads to prevent incomplete snapshots.

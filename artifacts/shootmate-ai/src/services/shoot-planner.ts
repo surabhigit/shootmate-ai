@@ -3,6 +3,13 @@ export type ChatMessage = {
   role: 'user' | 'assistant';
   text: string;
   timestamp: string;
+  actions?: AgentToolAction[];
+};
+
+export type AgentToolAction = {
+  name: string;
+  label: string;
+  summary: string;
 };
 
 export type ChecklistItem = {
@@ -113,11 +120,62 @@ const templates = {
       ['Wrap', 'Back up twice', 'Copy cards to two separate drives before formatting.'],
     ],
   },
+  product: {
+    type: 'Product shoot',
+    checklist: [
+      ['Camera body + charged backup battery', 'Camera bag'], ['50mm or macro lens', 'Lenses'],
+      ['Tripod + quick-release plate', 'Support'], ['Clean background sweep', 'Styling'],
+      ['Reflector or diffusion panel', 'Lighting'], ['Product-safe cloth + gloves', 'Styling'],
+      ['Formatted cards + spare', 'Power & media'], ['Tether cable or remote trigger', 'Workflow'],
+    ],
+    shots: [
+      ['The hero frame', 'Opening image', 'Start with the clearest view of the product; leave enough negative space for its shape to read.'],
+      ['Material in the light', 'Texture detail', 'Move a soft light across the surface and make one close frame that shows its finish.'],
+      ['The useful detail', 'Feature close-up', 'Photograph the detail that explains why this product is different, not just decorative.'],
+      ['A sense of scale', 'In context', 'Place the product beside a familiar object or in a real use setting to show its size.'],
+      ['The clean packshot', 'Catalog frame', 'Square the camera, tidy the edges and leave a little room around the silhouette.'],
+      ['The alternate angle', 'Final variation', 'Change height or orientation while keeping the light consistent for a useful comparison.'],
+    ],
+    schedule: [
+      ['T−30 min', 'Style & clean', 'Remove dust, check labels and prepare a spare background.'],
+      ['T−15 min', 'Light the hero frame', 'Make a test frame and check reflections before the product goes down.'],
+      ['Start', 'Hero & context frames', 'Capture the wide, clean image first, then add a simple use context.'],
+      ['Middle', 'Details & texture', 'Move closer for material, finish and key product features.'],
+      ['Final 20 min', 'Variations & review', 'Make the alternate angle, inspect focus and confirm the full set before packing.'],
+    ],
+  },
+  portrait: {
+    type: 'Portrait session',
+    checklist: [
+      ['Camera body + backup battery', 'Camera bag'], ['Portrait lens (50mm or 85mm)', 'Lenses'],
+      ['Charged batteries', 'Power & media'], ['Formatted card + spare', 'Power & media'],
+      ['Reflector or small bounce', 'Lighting'], ['Location notes + contact', 'Essentials'],
+      ['Water and a lint roller', 'Essentials'],
+    ],
+    shots: [
+      ['A scene-setting portrait', 'Opening frame', 'Begin with a little environment so the subject feels grounded in the location.'],
+      ['A relaxed close portrait', 'Warm-up', 'Give one simple prompt, then wait for the expression after the pose.'],
+      ['Hands and small details', 'Story detail', 'Look for gestures, clothing texture and the details that make this person specific.'],
+      ['A change of perspective', 'Variation', 'Shift your height or move to open shade before changing lenses.'],
+      ['A little movement', 'Candid frame', 'Invite a slow walk or turn and watch for a natural pause.'],
+      ['The quiet final frame', 'Closing image', 'Finish with a calm, close portrait while the subject is comfortable.'],
+    ],
+    schedule: [
+      ['T−20 min', 'Scout & check light', 'Choose one flattering starting point and a nearby backup spot.'],
+      ['Start', 'Easy warm-up frames', 'Keep the first frames conversational and low-pressure.'],
+      ['+30 min', 'Portrait variations', 'Change distance, height and background while the subject settles in.'],
+      ['+60 min', 'Details & movement', 'Add a few natural prompts and finish with close story details.'],
+      ['Wrap', 'Review & back up', 'Check focus on the key frames and secure the card before leaving.'],
+    ],
+  },
 };
 
 function identifyType(prompt: string): keyof typeof templates {
   const text = prompt.toLowerCase();
+  if (/\bproduct\b|\bcommercial\b|\bpackshot\b|\bcatalog\b/.test(text)) return 'product';
   if (/pre.?wedding|engagement|couple/.test(text)) return 'prewedding';
+  if (/wedding|bride|groom|ceremony/.test(text)) return 'wedding';
+  if (/portrait|headshot|fashion|food|family/.test(text)) return 'portrait';
   if (/equipment|camera|gear|pack|kit/.test(text)) return 'equipment';
   return 'wedding';
 }
@@ -151,11 +209,16 @@ export const localShootPlanner: ShootPlannerService = {
   },
 };
 
-export function makeMessage(role: ChatMessage['role'], text: string): ChatMessage {
+export function makeMessage(
+  role: ChatMessage['role'],
+  text: string,
+  actions?: AgentToolAction[],
+): ChatMessage {
   return {
     id: `message-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     role,
     text,
     timestamp: new Intl.DateTimeFormat('en', { hour: 'numeric', minute: '2-digit' }).format(new Date()),
+    ...(actions?.length ? { actions } : {}),
   };
 }

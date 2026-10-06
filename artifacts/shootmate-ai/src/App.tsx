@@ -10,6 +10,7 @@ import {
   localShootPlanner, makeMessage,
   type ChatMessage, type ChecklistItem, type ShootPlan,
 } from './services/shoot-planner';
+import { runAlexaAssistantTurn } from './services/alexa-simulated-assistant';
 import './index.css';
 
 const queryClient = new QueryClient();
@@ -28,6 +29,8 @@ function Home() {
   const [plan, setPlan] = useState<ShootPlan | null>(null);
   const [draft, setDraft] = useState('');
   const [loading, setLoading] = useState(false);
+  const [alexaMode, setAlexaMode] = useState(false);
+  const [recommendedShotId, setRecommendedShotId] = useState<string | null>(null);
   const [mobileView, setMobileView] = useState<'chat' | 'plan'>('chat');
   const [planView, setPlanView] = useState<'checklist' | 'shots' | 'schedule'>('checklist');
   const [toast, setToast] = useState('');
@@ -51,19 +54,36 @@ function Home() {
     setDraft('');
     setMessages((current) => [...current, makeMessage('user', prompt)]);
     setLoading(true);
-    if (prompt.toLowerCase().includes('timeline')) setPlanView('schedule');
-    else if (/shot list|pre.?wedding/i.test(prompt)) setPlanView('shots');
-    else setPlanView('checklist');
+    if (!alexaMode) {
+      if (prompt.toLowerCase().includes('timeline')) setPlanView('schedule');
+      else if (/shot list|pre.?wedding/i.test(prompt)) setPlanView('shots');
+      else setPlanView('checklist');
+    }
     try {
-      const result = await localShootPlanner.createPlan(prompt);
-      setPlan(result.plan);
-      setMessages((current) => [...current, makeMessage('assistant', result.reply)]);
+      if (alexaMode) {
+        const result = await runAlexaAssistantTurn({
+          prompt,
+          currentPlan: plan,
+          previousRecommendationId: recommendedShotId,
+        });
+        if (result.plan) setPlan(result.plan);
+        setPlanView(result.section);
+        setRecommendedShotId(result.recommendedShotId ?? null);
+        setMessages((current) => [...current, makeMessage('assistant', result.reply, [result.action])]);
+      } else {
+        const result = await localShootPlanner.createPlan(prompt);
+        setPlan(result.plan);
+        setRecommendedShotId(null);
+        setMessages((current) => [...current, makeMessage('assistant', result.reply)]);
+      }
     } catch {
-      setMessages((current) => [...current, makeMessage('assistant', 'I couldn’t put that plan together just now. Try again with a shoot type, like a wedding or portrait session.')]);
+      setMessages((current) => [...current, makeMessage('assistant', alexaMode
+        ? 'I couldn’t complete that ShootMate action. Try asking for a plan, checklist, shot ideas or a session-length timeline.'
+        : 'I couldn’t put that plan together just now. Try again with a shoot type, like a wedding or portrait session.')]);
       notify('Something went wrong. Please try again.');
     } finally {
       setLoading(false);
-      setMobileView('plan');
+      setMobileView(alexaMode ? 'chat' : 'plan');
     }
   };
 
@@ -108,6 +128,10 @@ function Home() {
   };
   const checkedCount = plan?.checklist.filter((item) => item.checked).length ?? 0;
   const completion = plan?.checklist.length ? Math.round((checkedCount / plan.checklist.length) * 100) : 0;
+  const toggleAlexaMode = () => {
+    setAlexaMode((current) => !current);
+    setMobileView('chat');
+  };
 
   return (
     <main className="app-shell">
@@ -146,24 +170,41 @@ function Home() {
           <section className={`panel chat-panel ${mobileView !== 'chat' ? 'hidden-mobile' : ''}`} aria-label="ShootMate conversation">
             <div className="panel-head">
               <div>
-                <div className="panel-title"><span className="assistant-avatar"><Aperture size={15} /></span> ShootMate assistant</div>
-                <div className="panel-subtitle">A thoughtful second brain for shoot day</div>
+                <div className="panel-title"><span className="assistant-avatar">{alexaMode ? <Sparkles size={15} /> : <Aperture size={15} />}</span> {alexaMode ? 'Alexa+ Assistant' : 'ShootMate assistant'}</div>
+                <div className="panel-subtitle">{alexaMode ? 'Conversational planning · local simulation' : 'A thoughtful second brain for shoot day'}</div>
               </div>
               <div className="head-actions">
-                <button className="icon-button" onClick={() => { setMessages(initialMessages); setPlan(null); setMobileView('chat'); notify('Started a fresh conversation.'); }} aria-label="Start a fresh conversation" data-testid="button-new-chat"><RotateCcw /></button>
+                <button className={`alexa-mode-button ${alexaMode ? 'active' : ''}`} onClick={toggleAlexaMode} aria-pressed={alexaMode} aria-label={alexaMode ? 'Switch to ShootMate assistant' : 'Open Alexa+ Assistant'} data-testid="button-alexa-assistant"><Sparkles /><span>{alexaMode ? 'ShootMate' : 'Alexa+ Assistant'}</span></button>
+                <button className="icon-button" onClick={() => { setMessages(initialMessages); setPlan(null); setRecommendedShotId(null); setMobileView('chat'); notify('Started a fresh conversation.'); }} aria-label="Start a fresh conversation" data-testid="button-new-chat"><RotateCcw /></button>
               </div>
             </div>
             <div className="chat-flow" aria-live="polite" data-testid="conversation-messages">
               <div className="intro">
-                <div className="intro-label"><Sparkles size={13} /> READY WHEN YOU ARE</div>
-                <p>Build a shoot plan that works in the real world: the right gear, the moments to look for, and enough time to actually see them.</p>
+                <div className="intro-label"><Sparkles size={13} /> {alexaMode ? 'ALEXA+ SIMULATED EXPERIENCE' : 'READY WHEN YOU ARE'}</div>
+                <p>{alexaMode
+                  ? 'Ask naturally and I’ll run ShootMate planning tools to update your checklist, shot list or timeline. This is a hackathon simulation, not an official Amazon Alexa integration.'
+                  : 'Build a shoot plan that works in the real world: the right gear, the moments to look for, and enough time to actually see them.'}</p>
+                {alexaMode && (
+                  <div className="alexa-examples" aria-label="Example Alexa+ requests">
+                    {['Plan a 3-hour photoshoot', 'Product shoot shot ideas', 'What should I shoot next?'].map((example) => (
+                      <button key={example} className="alexa-example" onClick={() => void sendPrompt(example)} disabled={loading}>{example}</button>
+                    ))}
+                  </div>
+                )}
               </div>
               {messages.map((message) => (
                 <article className={`message ${message.role}`} key={message.id} data-testid={`message-${message.role}-${message.id}`}>
-                  {message.role === 'assistant' && <span className="message-mark"><Aperture /></span>}
+                  {message.role === 'assistant' && <span className="message-mark">{alexaMode ? <Sparkles /> : <Aperture />}</span>}
                   <div>
                     <div className="bubble">{message.text}</div>
-                    <div className="message-time">{message.role === 'assistant' ? 'ShootMate' : 'You'} · {message.timestamp}</div>
+                    {message.actions?.map((action) => (
+                      <div className="tool-execution" key={`${message.id}-${action.name}`} data-testid={`tool-execution-${action.name}`}>
+                        <div className="tool-execution-head"><span className="tool-execution-status"><Check /></span><span>Tool completed</span><code>{action.name}</code></div>
+                        <strong>{action.label}</strong>
+                        <p>{action.summary}</p>
+                      </div>
+                    ))}
+                    <div className="message-time">{message.role === 'assistant' ? (alexaMode ? 'Alexa+ simulation' : 'ShootMate') : 'You'} · {message.timestamp}</div>
                   </div>
                 </article>
               ))}
@@ -234,7 +275,7 @@ function Home() {
                   {planView === 'shots' && (
                     <div className="plan-section">
                       <div className="section-header"><div className="section-label"><Image /> Story-led frames</div><span className="section-count">{plan.shots.length} MOMENTS</span></div>
-                      {plan.shots.map((shot, index) => <article className="shot-row" key={shot.id} data-testid={`shot-item-${shot.id}`}><span className="shot-number">{String(index + 1).padStart(2, '0')}</span><div><div className="shot-title">{shot.title}</div><div className="shot-moment">{shot.moment}</div><div className="shot-note">{shot.creativeNote}</div></div></article>)}
+                      {plan.shots.map((shot, index) => <article className={`shot-row ${shot.id === recommendedShotId ? 'recommended' : ''}`} key={shot.id} data-testid={`shot-item-${shot.id}`}><span className="shot-number">{String(index + 1).padStart(2, '0')}</span><div><div className="shot-title">{shot.title}{shot.id === recommendedShotId && <span className="recommended-label"><Sparkles /> NEXT UP</span>}</div><div className="shot-moment">{shot.moment}</div><div className="shot-note">{shot.creativeNote}</div></div></article>)}
                     </div>
                   )}
                   {planView === 'schedule' && (

@@ -15,7 +15,7 @@ localPort = 19594
 run = "pnpm --filter @workspace/shootmate-ai run dev"
 
 [services.production]
-build = [ "pnpm", "--filter", "@workspace/shootmate-ai", "run", "build" ]
+build = [ "env", "PORT=19594", "BASE_PATH=/", "NODE_ENV=production", "pnpm", "--filter", "@workspace/shootmate-ai", "run", "build" ]
 serve = "static"
 publicDir = "artifacts/shootmate-ai/dist/public"
 

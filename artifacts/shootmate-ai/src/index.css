@@ -216,3 +216,32 @@ button { -webkit-tap-highlight-color: transparent; }
 }
 .plan-switcher{justify-content:space-around}
 @media(max-width:700px){.plan-switcher{padding-left:9px;padding-right:9px}.plan-switcher button{gap:5px;padding-left:5px;padding-right:5px;font-size:9px}}
+.alexa-mode-button {display:flex;align-items:center;gap:6px;min-height:34px;padding:0 10px;border:1px solid #d9e3d9;border-radius:10px;background:#f1f5ef;color:#38634f;font-size:10px;font-weight:700;white-space:nowrap;cursor:pointer;transition:background .18s,border-color .18s,transform .18s}
+.alexa-mode-button:hover {background:#e7efe7;border-color:#aec2b0;transform:translateY(-1px)}
+.alexa-mode-button.active {background:#e1ebe4;color:#315b49}
+.alexa-mode-button svg {width:14px;height:14px}
+.intro-label {flex-wrap:wrap}
+.alexa-examples {display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.alexa-example {border:1px solid #dfe4d9;background:#fbfaf6;color:#53695a;border-radius:999px;padding:6px 9px;font-size:10px;line-height:1.25;cursor:pointer;transition:background .18s,border-color .18s}
+.alexa-example:hover {background:#eaf0e8;border-color:#aec2b0}
+.alexa-example:disabled {opacity:.55;cursor:not-allowed}
+.tool-execution {width:min(340px,84vw);box-sizing:border-box;margin-top:8px;padding:9px 11px;border:1px solid #dce6dc;border-radius:11px;background:#f3f6f0;color:#4d5d51}
+.tool-execution-head {display:flex;align-items:center;gap:6px;margin-bottom:5px;color:#6c806f;font:500 9px 'DM Mono',monospace;text-transform:uppercase;letter-spacing:.35px}
+.tool-execution-status {width:15px;height:15px;display:grid;place-items:center;border-radius:50%;background:#e0ebe0;color:#3e7457}
+.tool-execution-status svg {width:10px;height:10px;stroke-width:2.5}
+.tool-execution-head code {margin-left:auto;color:#52705a;font-size:9px;text-transform:none;letter-spacing:0}
+.tool-execution strong {display:block;color:#344b3b;font-size:11px}
+.tool-execution p {margin:3px 0 0;color:#778277;font-size:10px;line-height:1.45}
+.shot-row.recommended {margin:2px -7px;padding:10px 7px;border:1px solid #dce7dc;border-radius:10px;background:#f5f7f1}
+.recommended-label {display:inline-flex;align-items:center;gap:3px;margin-left:7px;padding:3px 5px;border-radius:99px;background:#e5eee3;color:#57785d;vertical-align:middle;font:500 8px 'DM Mono',monospace;letter-spacing:.3px}
+.recommended-label svg {width:10px;height:10px}
+@media(max-width:700px) {
+ .alexa-mode-button {min-height:32px;padding:0 8px;font-size:9px}
+ .alexa-examples {gap:5px}
+ .alexa-example {font-size:9px;padding:6px 8px}
+ .tool-execution {width:min(340px,88vw)}
+}
+@media(max-width:360px) {
+ .alexa-mode-button {gap:4px;padding:0 6px;font-size:8px}
+ .tool-execution-head code {font-size:8px}
+}
